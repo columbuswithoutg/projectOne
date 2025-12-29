@@ -3,10 +3,35 @@
   }
   
   body {
-    font-family: Arial, sans-serif;
-    background: #0f172a;
-    color: #e5e7eb;
-    text-align: center;
+    margin: 0;
+    font-family: sans-serif;
+  }
+
+  #header {
+    position: sticky;       /* stays at top while scrolling */
+    top: 0;
+    z-index: 10;
+    background-color: #1e293b;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  }
+
+  #header h1 {
+    margin: 0;
+    font-size: 18px;
+  }
+  
+  #header button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #ef4444;
+    color: #fff;
+    cursor: pointer;
   }
   
   h1 {
@@ -28,15 +53,19 @@
     font-weight: bold;
   }
   
+  #map-wrapper {
+    height: calc(100vh - 60px);  /* viewport height minus header height */
+    overflow: auto;              /* scrollable container */
+  }
+
   /* Map container */
   #map-container {
-    position: relative;       /* allows absolute positioning of nodes inside */
-    width: 100%;              /* full width or set a fixed width like 1200px */
-    height: 100%;            /* adjust height as needed */
-    margin: 20px auto;        /* center on the page */
-    border: 1px solid red;   /* optional, just for visualization */
-    background-color: white;
-    overflow: auto;           /* scrollbars if nodes exceed container */
+    position: relative;
+    min-width: 1000px;           /* or dynamically resize based on nodes */
+    min-height: 1000px;
+    margin: 0 auto;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
   }
   
   /* SVG for lines */

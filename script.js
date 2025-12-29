@@ -157,30 +157,11 @@ function showChoicePopup(project) {
 /************************************************
  * CLEAR BUTTON
  ************************************************/
-function renderClearButton() {
-  let container = document.getElementById("clear-button-container");
+document.addEventListener("DOMContentLoaded", () => {
+  const clearBtn = document.getElementById("clear-progress");
+  clearBtn.addEventListener("click", clearProgress);
+});
 
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "clear-button-container";
-    container.style.margin = "10px";
-    document.body.insertBefore(container, document.getElementById("map-container"));
-  }
-
-  container.innerHTML = "";
-
-  const btn = document.createElement("button");
-  btn.textContent = "Clear Progress";
-  btn.style.padding = "8px 16px";
-  btn.style.border = "none";
-  btn.style.borderRadius = "6px";
-  btn.style.background = "#ef4444";
-  btn.style.color = "#fff";
-  btn.style.cursor = "pointer";
-  btn.onclick = clearProgress;
-
-  container.appendChild(btn);
-}
 
 /************************************************
  * MAIN
