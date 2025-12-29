@@ -30,12 +30,13 @@
   
   /* Map container */
   #map-container {
-    position: relative;
-    width: 100%;
-    height: 700px;
-    overflow: auto;
-    background: #020617;
-    border-top: 1px solid #334155;
+    position: relative;       /* allows absolute positioning of nodes inside */
+    width: 100%;              /* full width or set a fixed width like 1200px */
+    height: 100%;            /* adjust height as needed */
+    margin: 20px auto;        /* center on the page */
+    border: 1px solid red;   /* optional, just for visualization */
+    background-color: white;
+    overflow: auto;           /* scrollbars if nodes exceed container */
   }
   
   /* SVG for lines */
@@ -53,15 +54,11 @@
   
   /* Node styling */
   .node {
+    width: 120px;          /* must match NODE_WIDTH */
+    height: 178px;          /* must match NODE_HEIGHT */
     position: absolute;
-    width: 120px;
-    padding: 10px;
+    overflow: hidden;      /* 🔑 prevents overflow */
     border-radius: 8px;
-    text-align: center;
-    cursor: pointer;
-    background: #2563eb;
-    color: white;
-    transition: transform 0.2s, opacity 0.2s;
   }
   
   .node:hover {
@@ -76,4 +73,42 @@
     display: none;
     pointer-events: none;
   }
-  
+
+  .node img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;     /* 🔑 fills container without stretching */
+    display: block;
+  }
+
+  .node .checkmark {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #22c55e;       /* green circle */
+    color: white;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    font-size: 14px;
+    pointer-events: none;      /* so it doesn’t block clicks */
+  }
+
+  .node .checkmark {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #22c55e;       /* green circle */
+    color: white;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    font-size: 14px;
+    pointer-events: none;      /* so it doesn’t block clicks */
+  }

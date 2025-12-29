@@ -1,10 +1,11 @@
 /************************************************
  * CONFIG
  ************************************************/
-const H_SPACING = 220;
-const V_SPACING = 140;
+const H_SPACING = 150;
+const V_SPACING = 250;
 const NODE_WIDTH = 120;
-const NODE_HEIGHT = 80;
+const NODE_HEIGHT = 178;
+const IMAGE_BASE = "assets/images/";
 
 /************************************************
  * STATE / STORAGE
@@ -24,33 +25,40 @@ const phaseIndex = {};
  * HELPERS
  ************************************************/
 function isUnlocked(project) {
-  return project.prerequisites.every(id => projects.find(p => p.id === id)?.watched);
+  return project.prerequisites.every(
+    id => projects.find(p => p.id === id)?.watched
+  );
 }
 
 function gridToPixelX(x) {
-  const container = document.getElementById("map-container");
-  return container.clientWidth / 2 + x * H_SPACING - NODE_WIDTH / 2;
+  const minX = Math.min(...projects.map(p => p.gridX));
+  return (x - minX) * H_SPACING;
 }
 
 function gridToPixelY(project) {
-  const container = document.getElementById("map-container");
-  const height = container.clientHeight || 800;
-  const offset = phaseIndex[project.phase] * V_SPACING * 8;
-  return height - (project.gridY * V_SPACING + offset);
+  return (Math.max(...projects.map(p => p.gridY)) - project.gridY) * V_SPACING;
 }
 
 /************************************************
  * RENDER FUNCTIONS
  ************************************************/
-function renderPhases() {
-  const container = document.getElementById("phase-labels");
-  container.innerHTML = "";
-  [...new Set(projects.map(p => p.phase))].forEach(phase => {
-    const div = document.createElement("div");
-    div.className = "phase";
-    div.textContent = phase;
-    container.appendChild(div);
-  });
+function resizeContainer() {
+  const container = document.getElementById("map-container");
+
+  if (!projects || projects.length === 0) return;
+
+  const minX = Math.min(...projects.map(p => p.gridX));
+  const maxX = Math.max(...projects.map(p => p.gridX));
+  const minY = Math.min(...projects.map(p => p.gridY));
+  const maxY = Math.max(...projects.map(p => p.gridY));
+
+  // total width and height based on spacing and node positions
+  const width = (maxX - minX + 1) * H_SPACING;  // extra NODE_WIDTH to fully fit rightmost node
+  const height = (maxY - minY + 1) * V_SPACING; // extra NODE_HEIGHT for bottom node
+
+  // set the container to the max dimensions needed
+  container.style.width = width + "px";
+  container.style.height = height + "px";
 }
 
 function renderNodes() {
@@ -62,18 +70,34 @@ function renderNodes() {
 
     const node = document.createElement("div");
     node.className = "node";
+
     if (!unlocked && !project.watched) node.classList.add("locked");
     if (project.watched) node.classList.add("watched");
 
     node.style.left = `${gridToPixelX(project.gridX)}px`;
     node.style.top = `${gridToPixelY(project)}px`;
 
-    node.textContent = project.title;
+    // IMAGE
+    if (project.image) {
+      const img = document.createElement("img");
+      img.src = IMAGE_BASE + project.image;
+      img.onerror = () => img.remove(); // safe fallback
+      node.appendChild(img);
+    }
+
+    const check = document.createElement("span");
+    check.className = "checkmark";
+    check.textContent = "✔"; // or use ✅ emoji
+    if (project.watched) check.style.display = "block";
+    else check.style.display = "none";
+
+    node.appendChild(check);
 
     if (unlocked && !project.watched) {
       node.onclick = () => showChoicePopup(project);
     }
 
+    // ✅ APPEND NODE (THIS WAS MISSING)
     nodeContainer.appendChild(node);
   });
 }
@@ -118,6 +142,7 @@ function showChoicePopup(project) {
   markBtn.style.marginTop = "10px";
   markBtn.style.padding = "6px 12px";
   markBtn.style.cursor = "pointer";
+
   markBtn.onclick = () => {
     project.watched = true;
     saveProgress();
@@ -126,8 +151,6 @@ function showChoicePopup(project) {
   };
 
   popup.appendChild(markBtn);
-
-  popup.onclick = (e) => { if(e.target === popup) document.body.removeChild(popup); };
   document.body.appendChild(popup);
 }
 
@@ -136,12 +159,14 @@ function showChoicePopup(project) {
  ************************************************/
 function renderClearButton() {
   let container = document.getElementById("clear-button-container");
+
   if (!container) {
     container = document.createElement("div");
     container.id = "clear-button-container";
     container.style.margin = "10px";
     document.body.insertBefore(container, document.getElementById("map-container"));
   }
+
   container.innerHTML = "";
 
   const btn = document.createElement("button");
@@ -161,11 +186,12 @@ function renderClearButton() {
  * MAIN
  ************************************************/
 function renderAll() {
-  renderPhases();
+  resizeContainer();
   renderNodes();
   renderClearButton();
 }
 
-// Initialize app
 renderAll();
-window.onresize = renderAll;
+window.onresize = () => {
+  renderAll();   // automatically recalculates container
+};
