@@ -1,10 +1,10 @@
 /************************************************
  * CONFIG
  ************************************************/
-const H_SPACING = 150;
-const V_SPACING = 250;
-const NODE_WIDTH = 120;
-const NODE_HEIGHT = 178;
+const H_SPACING = 500;
+const V_SPACING = 500;
+const NODE_WIDTH = 240;
+const NODE_HEIGHT = 356;
 const IMAGE_BASE = "assets/images/";
 
 /************************************************
@@ -13,6 +13,13 @@ const IMAGE_BASE = "assets/images/";
 const saved = JSON.parse(localStorage.getItem("watchProgress") || "{}");
 projects.forEach(p => {
   if (saved[p.id] !== undefined) p.watched = saved[p.id];
+});
+
+// Precompute which projects unlock which
+projects.forEach(p => {
+  p.unlocks = projects
+    .filter(c => c.prerequisites.includes(p.id))
+    .map(c => c.id);
 });
 
 /************************************************
@@ -40,70 +47,7 @@ function gridToPixelY(project) {
 }
 
 /************************************************
- * RENDER FUNCTIONS
- ************************************************/
-function resizeContainer() {
-  const container = document.getElementById("map-container");
-
-  if (!projects || projects.length === 0) return;
-
-  const minX = Math.min(...projects.map(p => p.gridX));
-  const maxX = Math.max(...projects.map(p => p.gridX));
-  const minY = Math.min(...projects.map(p => p.gridY));
-  const maxY = Math.max(...projects.map(p => p.gridY));
-
-  // total width and height based on spacing and node positions
-  const width = (maxX - minX + 1) * H_SPACING;  // extra NODE_WIDTH to fully fit rightmost node
-  const height = (maxY - minY + 1) * V_SPACING; // extra NODE_HEIGHT for bottom node
-
-  // set the container to the max dimensions needed
-  container.style.width = width + "px";
-  container.style.height = height + "px";
-}
-
-function renderNodes() {
-  const nodeContainer = document.getElementById("nodes");
-  nodeContainer.innerHTML = "";
-
-  projects.forEach(project => {
-    const unlocked = isUnlocked(project);
-
-    const node = document.createElement("div");
-    node.className = "node";
-
-    if (!unlocked && !project.watched) node.classList.add("locked");
-    if (project.watched) node.classList.add("watched");
-
-    node.style.left = `${gridToPixelX(project.gridX)}px`;
-    node.style.top = `${gridToPixelY(project)}px`;
-
-    // IMAGE
-    if (project.image) {
-      const img = document.createElement("img");
-      img.src = IMAGE_BASE + project.image;
-      img.onerror = () => img.remove(); // safe fallback
-      node.appendChild(img);
-    }
-
-    const check = document.createElement("span");
-    check.className = "checkmark";
-    check.textContent = "✔"; // or use ✅ emoji
-    if (project.watched) check.style.display = "block";
-    else check.style.display = "none";
-
-    node.appendChild(check);
-
-    if (unlocked && !project.watched) {
-      node.onclick = () => showChoicePopup(project);
-    }
-
-    // ✅ APPEND NODE (THIS WAS MISSING)
-    nodeContainer.appendChild(node);
-  });
-}
-
-/************************************************
- * STORAGE
+ * STORAGE FUNCTIONS
  ************************************************/
 function saveProgress() {
   const data = {};
@@ -155,6 +99,136 @@ function showChoicePopup(project) {
 }
 
 /************************************************
+ * RESIZE CONTAINER
+ ************************************************/
+function resizeContainer() {
+  const container = document.getElementById("map-container");
+  if (!projects || projects.length === 0) return;
+
+  const minX = Math.min(...projects.map(p => p.gridX));
+  const maxX = Math.max(...projects.map(p => p.gridX));
+  const minY = Math.min(...projects.map(p => p.gridY));
+  const maxY = Math.max(...projects.map(p => p.gridY));
+
+  const width = (maxX - minX + 1) * H_SPACING + NODE_WIDTH;
+  const height = (maxY - minY + 1) * V_SPACING + NODE_HEIGHT;
+
+  container.style.width = width + "px";
+  container.style.height = height + "px";
+}
+
+/************************************************
+ * SVG ARROWS
+ ************************************************/
+const arrows = [];
+const svg = document.getElementById("connections");
+
+// Add arrowhead defs once
+const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+marker.setAttribute("id", "arrowhead");
+marker.setAttribute("markerWidth", "10");
+marker.setAttribute("markerHeight", "7");
+marker.setAttribute("refX", "10");
+marker.setAttribute("refY", "3.5");
+marker.setAttribute("orient", "auto");
+
+const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+arrowPath.setAttribute("d", "M0,0 L0,7 L10,3.5 Z");
+arrowPath.setAttribute("fill", "#ef4444");
+
+marker.appendChild(arrowPath);
+defs.appendChild(marker);
+svg.appendChild(defs);
+
+function drawArrow(fromNode, toNode) {
+  const containerRect = document.getElementById("map-container").getBoundingClientRect();
+  const fromRect = fromNode.getBoundingClientRect();
+  const toRect = toNode.getBoundingClientRect();
+
+  const startX = fromRect.left + fromRect.width / 2 - containerRect.left;
+  const startY = fromRect.top + fromRect.height / 2 - containerRect.top;
+  const endX = toRect.left + toRect.width / 2 - containerRect.left;
+  const endY = toRect.top + toRect.height / 2 - containerRect.top;
+
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute("x1", startX);
+  line.setAttribute("y1", startY);
+  line.setAttribute("x2", endX);
+  line.setAttribute("y2", endY);
+  line.setAttribute("stroke", "#ef4444");
+  line.setAttribute("stroke-width", 4);
+  line.setAttribute("marker-end", "url(#arrowhead)");
+  line.style.display = "none";
+
+  svg.appendChild(line);
+  return line;
+}
+
+function updateArrows() {
+  arrows.forEach(({ line, childId }) => {
+    const child = projects.find(p => p.id === childId);
+    line.style.display = (child && isUnlocked(child)) ? "block" : "none";
+  });
+}
+
+/************************************************
+ * RENDER NODES + ARROWS
+ ************************************************/
+function renderNodes() {
+  const nodeContainer = document.getElementById("nodes");
+  nodeContainer.innerHTML = "";
+  svg.querySelectorAll("line").forEach(l => l.remove());
+  arrows.length = 0;
+
+  projects.forEach(project => {
+    const unlocked = isUnlocked(project);
+    const node = document.createElement("div");
+    node.className = "node";
+    node.dataset.id = project.id;
+
+    if (!unlocked && !project.watched) node.classList.add("locked");
+    if (project.watched) node.classList.add("watched");
+
+    node.style.left = `${gridToPixelX(project.gridX)}px`;
+    node.style.top = `${gridToPixelY(project)}px`;
+
+    if (project.image) {
+      const img = document.createElement("img");
+      img.src = IMAGE_BASE + project.image;
+      img.onerror = () => img.remove();
+      node.appendChild(img);
+    }
+
+    const check = document.createElement("span");
+    check.className = "checkmark";
+    check.textContent = "✔";
+    check.style.display = project.watched ? "block" : "none";
+    node.appendChild(check);
+
+    if (unlocked && !project.watched) {
+      node.onclick = () => showChoicePopup(project);
+    }
+
+    nodeContainer.appendChild(node);
+  });
+
+  // Draw arrows
+  projects.forEach(parent => {
+    const parentNode = document.querySelector(`.node[data-id='${parent.id}']`);
+    parent.unlocks.forEach(childId => {
+      const childNode = document.querySelector(`.node[data-id='${childId}']`);
+      if (parentNode && childNode) {
+        const line = drawArrow(parentNode, childNode);
+        arrows.push({ line, childId });
+      }
+    });
+  });
+
+  updateArrows();
+}
+
+/************************************************
  * CLEAR BUTTON
  ************************************************/
 document.addEventListener("DOMContentLoaded", () => {
@@ -162,17 +236,14 @@ document.addEventListener("DOMContentLoaded", () => {
   clearBtn.addEventListener("click", clearProgress);
 });
 
-
 /************************************************
  * MAIN
  ************************************************/
 function renderAll() {
   resizeContainer();
   renderNodes();
-  renderClearButton();
+  renderClearButton?.();
 }
 
 renderAll();
-window.onresize = () => {
-  renderAll();   // automatically recalculates container
-};
+window.onresize = () => renderAll();

@@ -8,25 +8,29 @@
   }
 
   #header {
-    position: sticky;       /* stays at top while scrolling */
+    position: fixed;
     top: 0;
-    z-index: 10;
+    left: 0;
+    right: 0;
+    z-index: 1000;
     background-color: #1e293b;
     color: #fff;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
+    padding: 50px 100px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
   }
+  
 
   #header h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: 40px;
   }
   
   #header button {
-    padding: 6px 12px;
+    font-size: large;
+    padding: 25px 50px;
     border: none;
     border-radius: 6px;
     background: #ef4444;
@@ -38,23 +42,9 @@
     margin-bottom: 10px;
   }
   
-  /* Phase labels */
-  #phase-labels {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    margin-bottom: 15px;
-  }
-  
-  .phase {
-    padding: 6px 14px;
-    border-radius: 6px;
-    background: #1e293b;
-    font-weight: bold;
-  }
-  
   #map-wrapper {
-    height: calc(100vh - 60px);  /* viewport height minus header height */
+    margin-top: 160px;
+    height: calc(100vh - 160px);  /* viewport height minus header height */
     overflow: auto;              /* scrollable container */
   }
 
@@ -64,8 +54,8 @@
     min-width: 1000px;           /* or dynamically resize based on nodes */
     min-height: 1000px;
     margin: 0 auto;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
+    background-color: white;
+    border: 1px solid red;
   }
   
   /* SVG for lines */
@@ -81,13 +71,15 @@
     position: relative;
   }
   
-  /* Node styling */
   .node {
-    width: 120px;          /* must match NODE_WIDTH */
-    height: 178px;          /* must match NODE_HEIGHT */
+    width: clamp(120px, 18vw, 240px);
+    aspect-ratio: 2 / 3;
     position: absolute;
-    overflow: hidden;      /* 🔑 prevents overflow */
+    overflow: hidden;
     border-radius: 8px;
+    transition: transform 0.15s ease;
+    transform: scale(1.5);
+    transform-origin: center;
   }
   
   .node:hover {
@@ -140,4 +132,12 @@
     line-height: 20px;
     font-size: 14px;
     pointer-events: none;      /* so it doesn’t block clicks */
+  }
+
+  #connections {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1; /* behind nodes */
   }
