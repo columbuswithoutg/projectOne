@@ -1,8 +1,8 @@
 /************************************************
  * CONFIG
  ************************************************/
-const H_SPACING = 500;
-const V_SPACING = 500;
+const H_SPACING = 600;
+const V_SPACING = 700;
 const NODE_WIDTH = 240;
 const NODE_HEIGHT = 356;
 const IMAGE_BASE = "assets/images/";
@@ -66,26 +66,37 @@ function clearProgress() {
  ************************************************/
 function showChoicePopup(project) {
   const popup = document.createElement("div");
+
   popup.style.position = "fixed";
   popup.style.top = "50%";
   popup.style.left = "50%";
   popup.style.transform = "translate(-50%, -50%)";
   popup.style.background = "#1e293b";
-  popup.style.padding = "20px";
-  popup.style.borderRadius = "8px";
-  popup.style.boxShadow = "0 0 10px #000";
+  popup.style.borderRadius = "12px";
+  popup.style.boxShadow = "0 0 20px rgba(0,0,0,0.6)";
   popup.style.zIndex = "1000";
+
+  /* ✅ RESPONSIVE SIZE */
+  popup.style.width = "90vw";       // mobile friendly
+  popup.style.maxWidth = "1000px";   // desktop limit
+  popup.style.padding = "32px";     // bigger content spacing
 
   const text = document.createElement("p");
   text.style.color = "#fff";
+  text.style.fontSize = "32px";
+  text.style.marginBottom = "20px";
+  text.style.textAlign = "center";
   text.textContent = `Choose an action for "${project.title}"`;
   popup.appendChild(text);
 
   const markBtn = document.createElement("button");
   markBtn.textContent = "Marked as watched";
-  markBtn.style.marginTop = "10px";
-  markBtn.style.padding = "6px 12px";
+  markBtn.style.width = "100%";
+  markBtn.style.padding = "14px";
+  markBtn.style.fontSize = "32px";
+  markBtn.style.borderRadius = "8px";
   markBtn.style.cursor = "pointer";
+
 
   markBtn.onclick = () => {
     project.watched = true;
@@ -142,14 +153,37 @@ defs.appendChild(marker);
 svg.appendChild(defs);
 
 function drawArrow(fromNode, toNode) {
-  const containerRect = document.getElementById("map-container").getBoundingClientRect();
+  const containerRect = document
+    .getElementById("map-container")
+    .getBoundingClientRect();
+
   const fromRect = fromNode.getBoundingClientRect();
   const toRect = toNode.getBoundingClientRect();
 
-  const startX = fromRect.left + fromRect.width / 2 - containerRect.left;
-  const startY = fromRect.top + fromRect.height / 2 - containerRect.top;
-  const endX = toRect.left + toRect.width / 2 - containerRect.left;
-  const endY = toRect.top + toRect.height / 2 - containerRect.top;
+  // Center points
+  const fromX = fromRect.left + fromRect.width / 2 - containerRect.left;
+  const fromY = fromRect.top + fromRect.height / 2 - containerRect.top;
+  const toX   = toRect.left + toRect.width / 2 - containerRect.left;
+  const toY   = toRect.top + toRect.height / 2 - containerRect.top;
+
+  // Direction vector
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const length = Math.hypot(dx, dy);
+
+  // Normalize direction
+  const ux = dx / length;
+  const uy = dy / length;
+
+  // Offset distances (half node size)
+  const fromOffset = Math.min(fromRect.width, fromRect.height) / 2;
+  const toOffset   = Math.min(toRect.width, toRect.height) / 2;
+
+  // Final edge points
+  const startX = fromX + ux * fromOffset;
+  const startY = fromY + uy * fromOffset;
+  const endX   = toX - ux * toOffset;
+  const endY   = toY - uy * toOffset;
 
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
   line.setAttribute("x1", startX);
