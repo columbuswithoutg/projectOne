@@ -1,143 +1,120 @@
 :root {
-    --cell-size: 140px;
-  }
-  
-  body {
-    margin: 0;
-    font-family: sans-serif;
-  }
+  --header-height: 160px;
+}
 
-  #header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    background-color: #1e293b;
-    color: #fff;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 50px 100px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  }
-  
+body {
+  margin: 0;
+  font-family: sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  /* prevent body scrolling */
+}
 
-  #header h1 {
-    margin: 0;
-    font-size: 40px;
-  }
-  
-  #header button {
-    font-size: large;
-    padding: 25px 50px;
-    border: none;
-    border-radius: 6px;
-    background: #ef4444;
-    color: #fff;
-    cursor: pointer;
-  }
-  
-  h1 {
-    margin-bottom: 10px;
-  }
-  
-  #map-wrapper {
-    margin-top: 160px;
-    height: calc(100vh - 160px);  /* viewport height minus header height */
-    overflow: auto;              /* scrollable container */
-  }
+#header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: var(--header-height);
 
-  /* Map container */
-  #map-container {
-    position: relative;
-    min-width: 1000px;           /* or dynamically resize based on nodes */
-    min-height: 1000px;
-    margin: 0 auto;
-    background-color: white;
-    border: 1px solid red;
-  }
-  
-  /* SVG for lines */
-  #connections {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-  }
-  
-  /* Nodes wrapper */
-  #nodes {
-    position: relative;
-  }
-  
-  .node {
-    width: clamp(120px, 18vw, 240px);
-    aspect-ratio: 2 / 3;
-    position: absolute;
-    overflow: hidden;
-    border-radius: 8px;
-    transition: transform 0.15s ease;
-    transform: scale(1.5);
-    transform-origin: center;
-  }
-  
-  .node:hover {
-    transform: scale(1.05);
-  }
-  
-  .node.watched {
-    background: #16a34a;
-  }
-  
-  .node.locked {
-    display: none;
-    pointer-events: none;
-  }
+  background-color: #1e293b;
+  color: #fff;
 
-  .node img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;     /* 🔑 fills container without stretching */
-    display: block;
-  }
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 
-  .node .checkmark {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: #22c55e;       /* green circle */
-    color: white;
-    font-weight: bold;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    text-align: center;
-    line-height: 20px;
-    font-size: 14px;
-    pointer-events: none;      /* so it doesn’t block clicks */
-  }
+  padding: 50px 100px;
+  box-sizing: border-box;
 
-  .node .checkmark {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: #22c55e;       /* green circle */
-    color: white;
-    font-weight: bold;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    text-align: center;
-    line-height: 20px;
-    font-size: 14px;
-    pointer-events: none;      /* so it doesn’t block clicks */
-  }
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
 
-  #connections {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1; /* behind nodes */
-  }
+#header h1 {
+  margin: 0;
+  font-size: 40px;
+}
+
+#header button {
+  font-size: large;
+  padding: 25px 50px;
+  border: none;
+  border-radius: 6px;
+  background: #ef4444;
+  color: #fff;
+  cursor: pointer;
+}
+
+#map-wrapper {
+  height: calc(100vh - var(--header-height));
+  overflow: auto;
+}
+
+#map-container {
+  position: relative;
+  min-width: 1000px;
+  min-height: 1000px;
+  margin: 0 auto;
+  background-color: white;
+  border: 1px solid red;
+}
+
+#connections {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+#nodes {
+  position: relative;
+  z-index: 2;
+}
+
+.node {
+  width: clamp(120px, 18vw, 240px);
+  aspect-ratio: 2 / 3;
+  position: absolute;
+  overflow: hidden;
+  border-radius: 8px;
+  transition: transform 0.15s ease;
+}
+
+.node:hover {
+  transform: scale(1.05);
+}
+
+.node.watched {
+  background: #16a34a;
+}
+
+.node.locked {
+  display: none;
+  pointer-events: none;
+}
+
+.node img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.node .checkmark {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+
+  background: #22c55e;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+
+  border-radius: 50%;
+  text-align: center;
+  line-height: 20px;
+
+  pointer-events: none;
+}

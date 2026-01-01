@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <title>Watch Order</title>
@@ -8,16 +7,19 @@
 </head>
 
 <body>
-  <div id="header">
+  <header id="header">
     <h1>Watch Order Progression</h1>
     <button id="clear-progress">Clear Progress</button>
+  </header>
+
+  <div id="map-wrapper">
+    <div id="map-container">
+      <svg id="connections"></svg>
+      <div id="nodes"></div>
+    </div>
   </div>
-  <div id="map-container">
-    <svg id="connections"></svg>
-    <div id="nodes"></div>
-  </div>
+
   <script src="projects.js"></script>
   <script src="script.js"></script>
 </body>
-
 </html>
