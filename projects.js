@@ -37,7 +37,7 @@ const projects = [
   { id: "shangchi", title: "Shang-Chi and the Legend of the Ten Rings", release: "2021-09-03", prerequisites: ["endgame"], phase: "Phase 4", gridX: -1, gridY: 15, watched: false, image: "shangchi.png" },
   { id: "eternals", title: "Eternals", release: "2021-11-05", prerequisites: ["endgame"], phase: "Phase 4", gridX: 0, gridY: 15, watched: false, image: "eternals.png" },
   { id: "hawkeye", title: "Hawkeye", release: "2021-11-24", prerequisites: ["blackwidow"], phase: "Phase 4", gridX: 1, gridY: 15, watched: false, image: "hawkeye.png" },
-
+  { id: "whatif1", title: "What If...? | Season 1", release: "2021-08-11", prerequisites: ["loki1"], phase: "Phase 4", gridX: -2, gridY: 20, watched: false, image: "whatif1.png" },
   { id: "nowayhome", title: "Spider-Man: No Way Home", release: "2021-12-17", prerequisites: ["farfromhome"], phase: "Phase 4", gridX: 0, gridY: 16, watched: false, image: "spider-man3.png" },
 
   // PHASE 5
@@ -46,7 +46,7 @@ const projects = [
   { id: "msmarvel", title: "Ms. Marvel", release: "2022-06-08", prerequisites: [], phase: "Phase 5", gridX: 0, gridY: 17, watched: false, image: "msmarvel.png" },
   { id: "thor4", title: "Thor: Love and Thunder", release: "2022-07-08", prerequisites: ["endgame"], phase: "Phase 5", gridX: 1, gridY: 17, watched: false, image: "thor4.png" },
   { id: "shehulk", title: "She-Hulk: Attorney at Law", release: "2022-08-18", prerequisites: ["endgame"], phase: "Phase 5", gridX: 2, gridY: 17, watched: false, image: "shehulk.png" },
-  { id: "blackpanther2", title: "Black Panther: Wakanda Forever", release: "2022-11-11", prerequisites: ["endgame"], phase: "Phase 5", gridX: 0, gridY: 18, watched: false, image: "blackpanther2.png" },
+  { id: "blackpanther2", title: "Black Panther: Wakanda Forever", release: "2022-11-11", prerequisites: ["endgame"], phase: "Phase 5", gridX: 0, gridY: 18, watched: false, image: "blackPanther2.png" },
 
   { id: "antman3", title: "Ant-Man and the Wasp: Quantumania", release: "2023-02-17", prerequisites: ["loki1"], phase: "Phase 5", gridX: -1, gridY: 19, watched: false, image: "ant-man3.png" },
   { id: "guardiansholiday", title: "The Guardians of the Galaxy Holiday Special", release: "2022-11-25", prerequisites: ["endgame"], phase: "Phase 5", gridX: 1, gridY: 19, watched: false, image: "guardians-holiday.png" },
@@ -58,5 +58,18 @@ const projects = [
 
   // PHASE 6 (released so far)
   { id: "echo", title: "Echo", release: "2024-01-10", prerequisites: ["hawkeye"], phase: "Phase 6", gridX: 0, gridY: 21, watched: false, image: "echo.png" },
-  { id: "deadpool3", title: "Deadpool & Wolverine", release: "2024-07-26", prerequisites: ["loki2"], phase: "Phase 6", gridX: 1, gridY: 21, watched: false, image: "deadpool3.png" }
+  { id: "deadpool3", title: "Deadpool & Wolverine", release: "2024-07-26", prerequisites: ["loki2"], phase: "Phase 6", gridX: 1, gridY: 21, watched: false, image: "deadpool3.png" },
+  { id: "whatif2", title: "What If...? | Season 2", release: "2023-12-22", prerequisites: ["loki1"], phase: "Phase 5", gridX: -2, gridY: 21, watched: false, image: "whatif2.png" },
+  { id: "whatif3", title: "What If...? | Season 3", release: "2024-12-22", prerequisites: ["whatif2"], phase: "Phase 6", gridX: -2, gridY: 22, watched: false, image: "whatif3.png" },
+  { id: "xmen97", title: "X-Men '97 | Season 1", release: "2024-03-20", prerequisites: [], phase: "Phase 5", gridX: -1, gridY: 21, watched: false, image: "xmen97.png" },
+  { id: "marvelzombies", title: "Marvel Zombies", release: "2024-10-04", prerequisites: ["whatif2"], phase: "Phase 6", gridX: -1, gridY: 22, watched: false, image: "marvelzombies.png" },
+  { id: "agatha", title: "Agatha All Along", release: "2024-09-18", prerequisites: ["wandavision"], phase: "Phase 5", gridX: 0, gridY: 21, watched: false, image: "agatha.png" },
+  { id: "spidermananimated", title: "Your Friendly Neighborhood Spider-Man | Season 1", release: "2024-11-02", prerequisites: [], phase: "Phase 6", gridX: 1, gridY: 21, watched: false, image: "spiderman-animated.png" },
+  { id: "daredevilbornagain", title: "Daredevil: Born Again | Season 1", release: "2025-03-04", prerequisites: ["shehulk"], phase: "Phase 6", gridX: 2, gridY: 21, watched: false, image: "daredevil.png" },
+  { id: "ironheart", title: "Ironheart", release: "2025-06-24", prerequisites: ["blackpanther2"], phase: "Phase 6", gridX: 0, gridY: 22, watched: false, image: "ironheart.png" },
+  { id: "eyesofwakanda", title: "Eyes of Wakanda", release: "2024-08-06", prerequisites: ["blackpanther2"], phase: "Phase 6", gridX: 1, gridY: 22, watched: false, image: "eyesofwakanda.png" },
+  { id: "cap4", title: "Captain America: Brave New World", release: "2025-02-14", prerequisites: ["falconws"], phase: "Phase 6", gridX: -1, gridY: 23, watched: false, image: "cap4.png" },
+  { id: "thunderbolts", title: "Thunderbolts*", release: "2025-05-02", prerequisites: ["blackwidow", "falconws"], phase: "Phase 6", gridX: 0, gridY: 23, watched: false, image: "thunderbolts.png" },
+  { id: "fantasticfour", title: "The Fantastic Four: First Steps", release: "2025-07-25", prerequisites: [], phase: "Phase 6", gridX: 1, gridY: 23, watched: false, image: "fantasticfour.png" }
+
 ];

@@ -61,6 +61,23 @@ function clearProgress() {
   renderAll();
 }
 
+document
+  .getElementById("markAllWatchedBtn")
+  .addEventListener("click", markAllAsWatched);
+
+function markAllAsWatched() {
+  projects.forEach(project => {
+    project.watched = true;
+    saved[project.id] = true;
+  });
+
+  localStorage.setItem("watchProgress", JSON.stringify(saved));
+
+  renderNodes();   // re-render nodes
+  updateArrows();  // update arrows if needed
+}
+
+
 /************************************************
  * POPUP
  ************************************************/

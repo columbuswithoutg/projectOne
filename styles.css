@@ -44,6 +44,14 @@ body {
   cursor: pointer;
 }
 
+#markAllWatchedBtn {
+  padding: 8px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+}
+
 #map-wrapper {
   height: calc(100vh - var(--header-height));
   overflow: auto;
