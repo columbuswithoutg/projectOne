@@ -127,8 +127,25 @@ function showChoicePopup(project) {
     zIndex: 1000,
     width: "90vw",
     maxWidth: "1000px",
-    padding: "32px"
+    padding: "32px",
+    boxSizing: "border-box"
   });
+
+  /* 🔴 CLOSE BUTTON */
+  const closeBtn = document.createElement("button");
+  closeBtn.innerHTML = "✕";
+  Object.assign(closeBtn.style, {
+    position: "absolute",
+    top: "12px",
+    right: "16px",
+    background: "transparent",
+    border: "none",
+    color: "#fff",
+    fontSize: "28px",
+    cursor: "pointer"
+  });
+
+  closeBtn.onclick = () => popup.remove();
 
   const text = document.createElement("p");
   text.textContent = `Choose an action for "${project.title}"`;
@@ -156,7 +173,7 @@ function showChoicePopup(project) {
     renderAll();
   };
 
-  popup.append(text, btn);
+  popup.append(closeBtn, text, btn);
   document.body.appendChild(popup);
 }
 
