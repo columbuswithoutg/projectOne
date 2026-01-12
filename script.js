@@ -70,6 +70,15 @@ function isVisible(project) {
   return (project.prerequisites || []).every(id => byId[id]?.watched);
 }
 
+function getHighestUnlockedPhase() {
+  let max = 1;
+  projects.forEach(p => {
+    const phase = getPhaseNumber(p);
+    if (phase && isPhaseUnlocked(p)) max = Math.max(max, phase);
+  });
+  return max;
+}
+
 /************************************************
  * STORAGE FUNCTIONS
  ************************************************/
@@ -92,7 +101,6 @@ function clearProgress() {
 function getVisibleBounds() {
   const visible = projects.filter(isVisible);
   if (!visible.length) return null;
-
   return {
     minX: Math.min(...visible.map(p => p.gridX)),
     maxX: Math.max(...visible.map(p => p.gridX)),
@@ -101,7 +109,6 @@ function getVisibleBounds() {
   };
 }
 
-// Convert grid coordinates to pixel coordinates relative to top-left = 0,0
 function gridToPixel(project, bounds) {
   return {
     x: (project.gridX - bounds.minX) * H_SPACING,
@@ -112,12 +119,8 @@ function gridToPixel(project, bounds) {
 function resizeContainer(bounds) {
   const container = document.getElementById("map-container");
   if (!container || !bounds) return;
-
-  container.style.width =
-    (bounds.maxX - bounds.minX + 1) * H_SPACING + NODE_WIDTH + "px";
-
-  container.style.height =
-    (bounds.maxY - bounds.minY + 1) * V_SPACING + NODE_HEIGHT + "px";
+  container.style.width = (bounds.maxX - bounds.minX + 1) * H_SPACING + NODE_WIDTH + "px";
+  container.style.height = (bounds.maxY - bounds.minY + 1) * V_SPACING + NODE_HEIGHT + "px";
 }
 
 /************************************************
@@ -126,8 +129,8 @@ function resizeContainer(bounds) {
 const svg = document.getElementById("connections");
 const arrows = [];
 
-// Create arrowhead once
-if (!svg.querySelector("#arrowhead")) {
+function createArrowhead() {
+  if (svg.querySelector("#arrowhead")) return;
   const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
   const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
   marker.setAttribute("id", "arrowhead");
@@ -137,18 +140,17 @@ if (!svg.querySelector("#arrowhead")) {
   marker.setAttribute("refY", "3.5");
   marker.setAttribute("orient", "auto");
 
-  const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  arrowPath.setAttribute("d", "M0,0 L0,7 L10,3.5 Z");
-  arrowPath.setAttribute("fill", "#ef4444");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M0,0 L0,7 L10,3.5 Z");
+  path.setAttribute("fill", "#222e22");
 
-  marker.appendChild(arrowPath);
+  marker.appendChild(path);
   defs.appendChild(marker);
   svg.appendChild(defs);
 }
 
 function drawArrow(fromNode, toNode) {
   const containerRect = document.getElementById("map-container").getBoundingClientRect();
-
   const a = fromNode.getBoundingClientRect();
   const b = toNode.getBoundingClientRect();
 
@@ -160,7 +162,6 @@ function drawArrow(fromNode, toNode) {
   const dx = toX - fromX;
   const dy = toY - fromY;
   const len = Math.hypot(dx, dy);
-
   const ux = dx / len;
   const uy = dy / len;
 
@@ -169,7 +170,7 @@ function drawArrow(fromNode, toNode) {
   line.setAttribute("y1", fromY + uy * (a.height / 2));
   line.setAttribute("x2", toX - ux * (b.width / 2));
   line.setAttribute("y2", toY - uy * (b.height / 2));
-  line.setAttribute("stroke", "#ef4444");
+  line.setAttribute("stroke", "#222e22");
   line.setAttribute("stroke-width", 4);
   line.setAttribute("marker-end", "url(#arrowhead)");
 
@@ -221,7 +222,7 @@ function showChoicePopup(project) {
   });
 
   const btn = document.createElement("button");
-  btn.textContent = "Mark as watched";
+  btn.textContent = project.watched ? "Mark as unwatched" : "Mark as watched";
   Object.assign(btn.style, {
     width: "100%",
     padding: "14px",
@@ -230,7 +231,7 @@ function showChoicePopup(project) {
     cursor: "pointer"
   });
   btn.onclick = () => {
-    project.watched = true;
+    project.watched = !project.watched; // toggle watched
     saveProgress();
     popup.remove();
     renderAll();
@@ -246,6 +247,8 @@ function showChoicePopup(project) {
 function renderNodes(bounds) {
   const nodesContainer = document.getElementById("nodes");
   nodesContainer.innerHTML = "";
+
+  // Remove old arrows
   svg.querySelectorAll("line").forEach(l => l.remove());
   arrows.length = 0;
 
@@ -276,12 +279,14 @@ function renderNodes(bounds) {
     check.style.display = p.watched ? "block" : "none";
     node.appendChild(check);
 
-    if (isUnlocked(p) && !p.watched) node.onclick = () => showChoicePopup(p);
+    if (isUnlocked(p)) {
+      node.onclick = () => showChoicePopup(p);
+    }
 
     nodesContainer.appendChild(node);
   });
 
-  // Draw arrows
+  // Draw arrows between visible nodes only
   projects.forEach(parent => {
     const from = document.querySelector(`.node[data-id="${parent.id}"]`);
     parent.unlocks.forEach(childId => {
@@ -296,8 +301,15 @@ function renderNodes(bounds) {
  ************************************************/
 function renderAll() {
   const bounds = getVisibleBounds();
+  if (!bounds) return;
+
   resizeContainer(bounds);
+  createArrowhead();
   renderNodes(bounds);
+
+  // Update phase data attribute
+  const phase = getHighestUnlockedPhase();
+  container.dataset.phase = phase;
 }
 
 document.addEventListener("DOMContentLoaded", () => {

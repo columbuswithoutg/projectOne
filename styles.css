@@ -2,20 +2,27 @@
   --header-height: 160px;
 }
 
+/* ======================
+   GLOBAL
+====================== */
 body {
   margin: 0;
   font-family: sans-serif;
   height: 100vh;
-  overflow: hidden; /* prevent body scrolling */
+  overflow: hidden;
+  background: #0a0a0a; /* deep dark base */
 }
 
+/* ======================
+   HEADER
+====================== */
 #header {
   position: sticky;
   top: 0;
   z-index: 1000;
   height: var(--header-height);
 
-  background-color: #1e293b;
+  background: linear-gradient(180deg, #0a0a0a, #1e1e2f);
   color: #fff;
 
   display: flex;
@@ -25,7 +32,7 @@ body {
   padding: 50px 100px;
   box-sizing: border-box;
 
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
 }
 
 #header h1 {
@@ -37,32 +44,66 @@ body {
   font-size: large;
   padding: 25px 50px;
   border: none;
-  border-radius: 6px;
-  background: #ef4444;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #b91c1c, #f87171);
   color: #fff;
   cursor: pointer;
+  box-shadow: 0 8px 20px rgba(248, 113, 113, 0.4);
 }
 
-#markAllWatchedBtn {
-  padding: 8px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 6px;
-  border: none;
-}
-
+/* ======================
+   MAP WRAPPER
+====================== */
 #map-wrapper {
   height: calc(100vh - var(--header-height));
   overflow: auto;
 }
 
+/* ======================
+   MAP CONTAINER (DOOMSDAY THEME)
+====================== */
 #map-container {
   position: relative;
   margin: 0 auto;
-  background-color: white;
-  border: 1px solid red;
+
+  /* Avengers Doomsday Theme */
+background:
+  /* glowing toxic spots */
+  radial-gradient(circle at 20% 20%, #222e22, transparent 30%),
+  radial-gradient(circle at 80% 40%, #485f40, transparent 35%),
+  /* dark moody base */
+  linear-gradient(180deg, #0a1a0a 0%, #1b3a1b 50%, #0a1a0a 100%);
+border: 1px solid rgba(20, 175, 15, 0.849); /* subtle green border */
+
 }
 
+/* 🔥 Grid overlay for sci-fi map feel */
+#map-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(255,0,0,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,0,0,0.05) 1px, transparent 1px);
+  background-size: 120px 120px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Optional Avengers Doomsday watermark */
+#map-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("assets/avengers-logo.svg") center / 600px no-repeat;
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ======================
+   CONNECTIONS
+====================== */
 #connections {
   position: absolute;
   top: 0;
@@ -70,41 +111,62 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1; /* behind nodes */
+  z-index: 1;
 }
 
+#connections line {
+  stroke: rgba(79, 255, 56, 0.45);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 6px rgba(60, 255, 0, 0.7));
+  transition: stroke 0.2s ease;
+}
+
+/* ======================
+   NODES LAYER
+====================== */
 #nodes {
   position: relative;
   width: 100%;
   height: 100%;
-  z-index: 2; /* above arrows */
+  z-index: 2;
 }
 
+/* ======================
+   NODE CARDS
+====================== */
 .node {
   width: clamp(120px, 18vw, 240px);
   aspect-ratio: 2 / 3;
   position: absolute;
   overflow: hidden;
-  border-radius: 8px;
-  transition: transform 0.15s ease;
-  cursor: pointer; /* clickable by default */
+  border-radius: 12px;
+
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.7),
+    0 0 0 1px rgba(255, 0, 0, 0.08);
 }
 
 .node:hover {
-  transform: scale(1.05);
+  transform: scale(1.06);
 }
 
 .node.watched {
-  background: #16a34a;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.8),
+    0 20px 40px rgba(0,0,0,0.7);
 }
 
 .node.locked {
-  pointer-events: none; /* unclickable */
   display: none;
-  /* filter: grayscale(1);
-  opacity: 0.35; */
+  pointer-events: none;
 }
 
+/* ======================
+   NODE IMAGE
+====================== */
 .node img {
   width: 100%;
   height: 100%;
@@ -112,26 +174,25 @@ body {
   display: block;
 }
 
+/* ======================
+   CHECKMARK
+====================== */
 .node .checkmark {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 20px;
-  height: 20px;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
 
-  background: #22c55e;
+  background: radial-gradient(circle, #2eff51, #7f1d1d);
   color: white;
   font-weight: bold;
   font-size: 14px;
 
   border-radius: 50%;
   text-align: center;
-  line-height: 20px;
+  line-height: 22px;
 
+  box-shadow: 0 0 10px rgba(8, 8, 8, 0.8);
   pointer-events: none;
-}
-
-/* Optional: smooth arrow appearance */
-#connections line {
-  transition: stroke 0.2s ease;
 }
