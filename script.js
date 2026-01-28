@@ -6,8 +6,7 @@ const V_SPACING = 350;
 const NODE_WIDTH = 240;
 const NODE_HEIGHT = 356;
 const IMAGE_BASE = "assets/images/";
-
-const START_NODE_ID = "ironman1"; // your first node
+const START_NODE_ID = "ironman1";
 
 const PHASE_UNLOCKERS = {
   2: "avengers1",
@@ -24,104 +23,53 @@ const saved = JSON.parse(localStorage.getItem("watchProgress") || "{}");
 
 // Fast lookup by id
 const byId = Object.fromEntries(projects.map(p => [p.id, p]));
-
-// Initialize watched status
 projects.forEach(p => {
-  p.watched = saved[p.id] === true;
+  p.watched = !!saved[p.id];
+  p.phaseNum = typeof p.phase === "number" ? p.phase : +(String(p.phase).match(/\d+/)?.[0] || 1);
+  p.unlocks = projects.filter(c => c.prerequisites?.includes(p.id)).map(c => c.id);
 });
 
 /************************************************
- * PRECOMPUTE UNLOCK CHAINS
+ * HELPERS
  ************************************************/
-projects.forEach(p => {
-  p.unlocks = projects
-    .filter(c => c.prerequisites?.includes(p.id))
-    .map(c => c.id);
-});
+const setStyles = (el, styles) => Object.assign(el.style, styles);
 
-/************************************************
- * PHASE HELPERS
- ************************************************/
-function getPhaseNumber(project) {
-  if (typeof project.phase === "number") return project.phase;
-  const match = String(project.phase).match(/\d+/);
-  return match ? Number(match[0]) : null;
-}
+const isPhaseUnlocked = p => p.phaseNum === 1 || (PHASE_UNLOCKERS[p.phaseNum] && byId[PHASE_UNLOCKERS[p.phaseNum]]?.watched);
 
-function isPhaseUnlocked(project) {
-  const phase = getPhaseNumber(project);
-  if (phase === 1) return true;
-  const unlocker = PHASE_UNLOCKERS[phase];
-  return unlocker && byId[unlocker]?.watched === true;
-}
+const isUnlocked = p => p.phaseNum === 1 ? true : isPhaseUnlocked(p) && (p.prerequisites || []).every(id => byId[id]?.watched);
 
-/************************************************
- * VISIBILITY & INTERACTION
- ************************************************/
-function isUnlocked(project) {
-  if (getPhaseNumber(project) === 1) return true;
-  if (!isPhaseUnlocked(project)) return false;
-  return (project.prerequisites || []).every(id => byId[id]?.watched);
-}
+const isVisible = p => p.id === START_NODE_ID || p.watched || (p.prerequisites || []).every(id => byId[id]?.watched);
 
-function isVisible(project) {
-  if (project.id === START_NODE_ID) return true;
-  if (project.watched) return true;
-  return (project.prerequisites || []).every(id => byId[id]?.watched);
-}
+const getHighestUnlockedPhase = () => Math.max(1, ...projects.filter(isPhaseUnlocked).map(p => p.phaseNum));
 
-function getHighestUnlockedPhase() {
-  let max = 1;
-  projects.forEach(p => {
-    const phase = getPhaseNumber(p);
-    if (phase && isPhaseUnlocked(p)) max = Math.max(max, phase);
-  });
-  return max;
-}
+const saveProgress = () => localStorage.setItem("watchProgress", JSON.stringify(Object.fromEntries(projects.map(p => [p.id, p.watched]))));
 
-/************************************************
- * STORAGE FUNCTIONS
- ************************************************/
-function saveProgress() {
-  localStorage.setItem(
-    "watchProgress",
-    JSON.stringify(Object.fromEntries(projects.map(p => [p.id, p.watched])))
-  );
-}
-
-function clearProgress() {
+const clearProgress = () => {
+  projects.forEach(p => p.watched = false);
   localStorage.removeItem("watchProgress");
-  projects.forEach(p => (p.watched = false));
   renderAll();
-}
+};
 
-/************************************************
- * CONTAINER SIZE & GRID → PIXEL
- ************************************************/
-function getVisibleBounds() {
+const getVisibleBounds = () => {
   const visible = projects.filter(isVisible);
   if (!visible.length) return null;
-  return {
-    minX: Math.min(...visible.map(p => p.gridX)),
-    maxX: Math.max(...visible.map(p => p.gridX)),
-    minY: Math.min(...visible.map(p => p.gridY)),
-    maxY: Math.max(...visible.map(p => p.gridY))
-  };
-}
+  const xs = visible.map(p => p.gridX), ys = visible.map(p => p.gridY);
+  return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+};
 
-function gridToPixel(project, bounds) {
-  return {
-    x: (project.gridX - bounds.minX) * H_SPACING,
-    y: (project.gridY - bounds.minY) * V_SPACING
-  };
-}
+const gridToPixel = (p, bounds) => ({
+  x: (p.gridX - bounds.minX) * H_SPACING,
+  y: (p.gridY - bounds.minY) * V_SPACING
+});
 
-function resizeContainer(bounds) {
+const resizeContainer = bounds => {
   const container = document.getElementById("map-container");
   if (!container || !bounds) return;
-  container.style.width = (bounds.maxX - bounds.minX + 1) * H_SPACING + NODE_WIDTH + "px";
-  container.style.height = (bounds.maxY - bounds.minY + 1) * V_SPACING + NODE_HEIGHT + "px";
-}
+  setStyles(container, {
+    width: (bounds.maxX - bounds.minX + 1) * H_SPACING + NODE_WIDTH + "px",
+    height: (bounds.maxY - bounds.minY + 1) * V_SPACING + NODE_HEIGHT + "px"
+  });
+};
 
 /************************************************
  * SVG ARROWS
@@ -129,11 +77,10 @@ function resizeContainer(bounds) {
 const svg = document.getElementById("connections");
 const arrows = [];
 
-function createArrowhead() {
+const createArrowhead = () => {
   if (svg.querySelector("#arrowhead")) return;
-  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
   const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
-  marker.setAttribute("id", "arrowhead");
+  marker.id = "arrowhead";
   marker.setAttribute("markerWidth", "10");
   marker.setAttribute("markerHeight", "7");
   marker.setAttribute("refX", "10");
@@ -143,46 +90,49 @@ function createArrowhead() {
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.setAttribute("d", "M0,0 L0,7 L10,3.5 Z");
   path.setAttribute("fill", "#222e22");
-
   marker.appendChild(path);
+
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
   defs.appendChild(marker);
   svg.appendChild(defs);
-}
+};
 
-function drawArrow(fromNode, toNode) {
-  const containerRect = document.getElementById("map-container").getBoundingClientRect();
+const drawArrow = (fromNode, toNode) => {
+  const containerRect = svg.parentElement.getBoundingClientRect();
   const a = fromNode.getBoundingClientRect();
   const b = toNode.getBoundingClientRect();
 
-  const fromX = a.left + a.width / 2 - containerRect.left;
-  const fromY = a.top + a.height / 2 - containerRect.top;
-  const toX = b.left + b.width / 2 - containerRect.left;
-  const toY = b.top + b.height / 2 - containerRect.top;
+  const fx = a.left + a.width / 2 - containerRect.left;
+  const fy = a.top + a.height / 2 - containerRect.top;
+  const tx = b.left + b.width / 2 - containerRect.left;
+  const ty = b.top + b.height / 2 - containerRect.top;
 
-  const dx = toX - fromX;
-  const dy = toY - fromY;
+  const dx = tx - fx, dy = ty - fy;
   const len = Math.hypot(dx, dy);
-  const ux = dx / len;
-  const uy = dy / len;
+  const ux = dx / len, uy = dy / len;
 
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  line.setAttribute("x1", fromX + ux * (a.width / 2));
-  line.setAttribute("y1", fromY + uy * (a.height / 2));
-  line.setAttribute("x2", toX - ux * (b.width / 2));
-  line.setAttribute("y2", toY - uy * (b.height / 2));
+  line.setAttribute("x1", fx + ux * (a.width / 2));
+  line.setAttribute("y1", fy + uy * (a.height / 2));
+  line.setAttribute("x2", tx - ux * (b.width / 2));
+  line.setAttribute("y2", ty - uy * (b.height / 2));
   line.setAttribute("stroke", "#222e22");
   line.setAttribute("stroke-width", 4);
   line.setAttribute("marker-end", "url(#arrowhead)");
 
   svg.appendChild(line);
   return line;
-}
+};
 
 /************************************************
  * POPUP
  ************************************************/
-function showChoicePopup(project) {
+const showChoicePopup = p => {
+  // Remove any existing popup first
+  document.querySelector(".node-popup")?.remove();
+
   const popup = document.createElement("div");
+  popup.className = "node-popup"; // Add a class to identify it
   Object.assign(popup.style, {
     position: "fixed",
     top: "50%",
@@ -213,7 +163,7 @@ function showChoicePopup(project) {
   closeBtn.onclick = () => popup.remove();
 
   const text = document.createElement("p");
-  text.textContent = `Choose an action for "${project.title}"`;
+  text.textContent = `Choose an action for "${p.title}"`;
   Object.assign(text.style, {
     color: "#fff",
     fontSize: "32px",
@@ -222,7 +172,7 @@ function showChoicePopup(project) {
   });
 
   const btn = document.createElement("button");
-  btn.textContent = project.watched ? "Mark as unwatched" : "Mark as watched";
+  btn.textContent = p.watched ? "Mark as unwatched" : "Mark as watched";
   Object.assign(btn.style, {
     width: "100%",
     padding: "14px",
@@ -231,7 +181,7 @@ function showChoicePopup(project) {
     cursor: "pointer"
   });
   btn.onclick = () => {
-    project.watched = !project.watched; // toggle watched
+    p.watched = !p.watched; // toggle watched
     saveProgress();
     popup.remove();
     renderAll();
@@ -239,32 +189,29 @@ function showChoicePopup(project) {
 
   popup.append(closeBtn, text, btn);
   document.body.appendChild(popup);
-}
+};
 
 /************************************************
  * RENDERING
  ************************************************/
-function renderNodes(bounds) {
+const renderNodes = bounds => {
   const nodesContainer = document.getElementById("nodes");
   nodesContainer.innerHTML = "";
-
-  // Remove old arrows
   svg.querySelectorAll("line").forEach(l => l.remove());
   arrows.length = 0;
 
-  projects.forEach(p => {
-    if (!isVisible(p)) return;
+  const visibleProjects = projects.filter(isVisible);
+  const nodeMap = {};
 
+  visibleProjects.forEach(p => {
     const node = document.createElement("div");
     node.className = "node";
     node.dataset.id = p.id;
-
     if (p.watched) node.classList.add("watched");
     else if (!isUnlocked(p)) node.classList.add("locked");
 
     const pos = gridToPixel(p, bounds);
-    node.style.left = pos.x + "px";
-    node.style.top = pos.y + "px";
+    setStyles(node, { left: pos.x + "px", top: pos.y + "px" });
 
     if (p.image) {
       const img = document.createElement("img");
@@ -276,30 +223,26 @@ function renderNodes(bounds) {
     const check = document.createElement("span");
     check.className = "checkmark";
     check.textContent = "✔";
-    check.style.display = p.watched ? "block" : "none";
+    setStyles(check, { display: p.watched ? "block" : "none" });
     node.appendChild(check);
 
-    if (isUnlocked(p)) {
-      node.onclick = () => showChoicePopup(p);
-    }
+    if (isUnlocked(p)) node.onclick = () => showChoicePopup(p);
 
     nodesContainer.appendChild(node);
+    nodeMap[p.id] = node;
   });
 
-  // Draw arrows between visible nodes only
-  projects.forEach(parent => {
-    const from = document.querySelector(`.node[data-id="${parent.id}"]`);
+  visibleProjects.forEach(parent => {
     parent.unlocks.forEach(childId => {
-      const to = document.querySelector(`.node[data-id="${childId}"]`);
-      if (from && to) arrows.push(drawArrow(from, to));
+      if (nodeMap[parent.id] && nodeMap[childId]) arrows.push(drawArrow(nodeMap[parent.id], nodeMap[childId]));
     });
   });
-}
+};
 
 /************************************************
- * MAIN FUNCTIONS
+ * MAIN
  ************************************************/
-function renderAll() {
+const renderAll = () => {
   const bounds = getVisibleBounds();
   if (!bounds) return;
 
@@ -307,10 +250,14 @@ function renderAll() {
   createArrowhead();
   renderNodes(bounds);
 
-  // Update phase data attribute
-  const phase = getHighestUnlockedPhase();
-  container.dataset.phase = phase;
-}
+  const container = document.getElementById("map-container");
+  container.dataset.phase = getHighestUnlockedPhase();
+
+  const lastWatched = projects.filter(p => p.watched).pop();
+  const targetId = lastWatched ? lastWatched.id : START_NODE_ID;
+  const node = document.querySelector(`.node[data-id='${targetId}']`);
+  node?.scrollIntoView({ behavior: "smooth", block: "center" });
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("markAllWatchedBtn")?.addEventListener("click", () => {
@@ -318,9 +265,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveProgress();
     renderAll();
   });
-
   document.getElementById("clear-progress")?.addEventListener("click", clearProgress);
-
   renderAll();
 });
 
