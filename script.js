@@ -133,7 +133,7 @@ const getHighestUnlockedPhase = () => {
 };
 
 /************************************************
- * COORDINATE SYSTEM
+ * COORDINATE SYSTEM (Fixed - uniform for both sides)
  ************************************************/
 const getBounds = () => {
   const visible = projects.filter(isVisible);
@@ -150,6 +150,8 @@ const getBounds = () => {
   };
 };
 
+// Convert grid coordinates to pixel positions
+// Both leftmost and rightmost nodes get the same treatment
 const toPixel = (gridX, gridY, bounds) => ({
   x: (gridX - bounds.minX) * CONFIG.H_SPACING,
   y: (gridY - bounds.minY) * CONFIG.V_SPACING
@@ -201,9 +203,17 @@ class MapRenderer {
     });
   }
 
+  // FIXED: Uniform sizing logic for both left and right sides
   updateContainerSize(bounds) {
-    const width = (bounds.maxX - bounds.minX + 1) * CONFIG.H_SPACING + CONFIG.NODE_WIDTH;
-    const height = (bounds.maxY - bounds.minY + 1) * CONFIG.V_SPACING + CONFIG.NODE_HEIGHT;
+    // Calculate based on actual node positions, not grid range + arbitrary padding
+    // Width = (distance between leftmost and rightmost grid positions) * spacing + node width
+    // This treats left and right edges identically
+    const gridWidth = bounds.maxX - bounds.minX;
+    const gridHeight = bounds.maxY - bounds.minY;
+    
+    // Width: space between nodes + one node width (same logic as left side positioning)
+    const width = gridWidth * CONFIG.H_SPACING + CONFIG.NODE_WIDTH;
+    const height = gridHeight * CONFIG.V_SPACING + CONFIG.NODE_HEIGHT;
     
     this.mapContainer.style.width = `${width}px`;
     this.mapContainer.style.height = `${height}px`;
