@@ -16,7 +16,7 @@ const projects = [
   { id: "antman", title: "Ant-Man", release: "2015-07-17", prerequisites: ["ageofultron"], phase: "Phase 2", gridX: 3, gridY: 7, watched: false, image: "ant-man.png" },
 
   // PHASE 3
-  { id: "civilwar", title: "Captain America: Civil War", release: "2016-05-06", prerequisites: ["ageofultron", "antman"], phase: "Phase 3", gridX: 2, gridY: 8, watched: false, image: "captainAmerica3.png" },
+  { id: "civilwar", title: "Captain America: Civil War", release: "2016-05-06", prerequisites: ["antman"], phase: "Phase 3", gridX: 2, gridY: 8, watched: false, image: "captainAmerica3.png" },
   { id: "doctorstrange", title: "Doctor Strange", release: "2016-11-04", prerequisites: [], phase: "Phase 3", gridX: -3, gridY: 8, watched: false, image: "docstrange.png" },
   { id: "guardians2", title: "Guardians of the Galaxy Vol. 2", release: "2017-05-05", prerequisites: ["guardians1"], phase: "Phase 3", gridX: -2, gridY: 8, watched: false, image: "gotg2.png" },
   { id: "spiderman1", title: "Spider-Man: Homecoming", release: "2017-07-07", prerequisites: ["civilwar"], phase: "Phase 3", gridX: 1, gridY: 9, watched: false, image: "spider-man.png" },

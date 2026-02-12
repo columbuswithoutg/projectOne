@@ -1,272 +1,438 @@
 /************************************************
- * CONFIG
+ * CONFIGURATION (Mobile proportions for all)
  ************************************************/
-const H_SPACING = 300;
-const V_SPACING = 350;
-const NODE_WIDTH = 240;
-const NODE_HEIGHT = 356;
-const IMAGE_BASE = "assets/images/";
-const START_NODE_ID = "ironman1";
+const CONFIG = {
+  H_SPACING: 160,
+  V_SPACING: 220,
+  NODE_WIDTH: 120,
+  NODE_HEIGHT: 180,
+  IMAGE_BASE: "assets/images/",
+  START_NODE_ID: "ironman1",
+  STORAGE_KEY: "watchProgress_v2"
+};
 
 const PHASE_UNLOCKERS = {
   2: "avengers1",
-  3: "ageofultron",
+  3: "ageofultron", 
   4: "endgame",
   5: "loki1",
   6: "loki2"
 };
 
 /************************************************
- * STATE / STORAGE
+ * STATE MANAGEMENT
  ************************************************/
-const saved = JSON.parse(localStorage.getItem("watchProgress") || "{}");
+class WatchState {
+  constructor() {
+    this.data = new Map();
+    this.byId = new Map();
+    this.listeners = new Set();
+    this.load();
+  }
 
-// Fast lookup by id
-const byId = Object.fromEntries(projects.map(p => [p.id, p]));
-projects.forEach(p => {
-  p.watched = !!saved[p.id];
-  p.phaseNum = typeof p.phase === "number" ? p.phase : +(String(p.phase).match(/\d+/)?.[0] || 1);
-  p.unlocks = projects.filter(c => c.prerequisites?.includes(p.id)).map(c => c.id);
-});
+  load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || "{}");
+      Object.entries(saved).forEach(([id, watched]) => this.data.set(id, watched));
+    } catch (e) {
+      console.warn("Failed to load progress:", e);
+    }
+  }
+
+  save() {
+    const obj = Object.fromEntries(this.data);
+    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(obj));
+    this.listeners.forEach(fn => fn(this.data));
+  }
+
+  isWatched(id) {
+    return !!this.data.get(id);
+  }
+
+  toggle(id) {
+    const current = this.isWatched(id);
+    this.data.set(id, !current);
+    this.save();
+    return !current;
+  }
+
+  setWatched(id, value) {
+    this.data.set(id, value);
+    this.save();
+  }
+
+  clear() {
+    this.data.clear();
+    localStorage.removeItem(CONFIG.STORAGE_KEY);
+    this.listeners.forEach(fn => fn(this.data));
+  }
+
+  getLastWatchedId() {
+    const watched = [];
+    for (const [id, isWatched] of this.data) {
+      if (isWatched) watched.push(id);
+    }
+    return watched.length ? watched[watched.length - 1] : CONFIG.START_NODE_ID;
+  }
+
+  subscribe(fn) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  initProjects(projects) {
+    this.byId = new Map(projects.map(p => [p.id, p]));
+    projects.forEach(p => {
+      p.watched = this.isWatched(p.id);
+      p.phaseNum = this.parsePhase(p.phase);
+      p.unlocks = projects
+        .filter(c => c.prerequisites?.includes(p.id))
+        .map(c => c.id);
+    });
+  }
+
+  parsePhase(phase) {
+    if (typeof phase === "number") return phase;
+    const match = String(phase).match(/\d+/);
+    return match ? +match[0] : 1;
+  }
+}
+
+const state = new WatchState();
 
 /************************************************
- * HELPERS
+ * UTILITY FUNCTIONS
  ************************************************/
-const setStyles = (el, styles) => Object.assign(el.style, styles);
+const $ = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
-const isPhaseUnlocked = p => p.phaseNum === 1 || (PHASE_UNLOCKERS[p.phaseNum] && byId[PHASE_UNLOCKERS[p.phaseNum]]?.watched);
-
-const isUnlocked = p => p.phaseNum === 1 ? true : isPhaseUnlocked(p) && (p.prerequisites || []).every(id => byId[id]?.watched);
-
-const isVisible = p => p.id === START_NODE_ID || p.watched || (p.prerequisites || []).every(id => byId[id]?.watched);
-
-const getHighestUnlockedPhase = () => Math.max(1, ...projects.filter(isPhaseUnlocked).map(p => p.phaseNum));
-
-const saveProgress = () => localStorage.setItem("watchProgress", JSON.stringify(Object.fromEntries(projects.map(p => [p.id, p.watched]))));
-
-const clearProgress = () => {
-  projects.forEach(p => p.watched = false);
-  localStorage.removeItem("watchProgress");
-  renderAll();
+/************************************************
+ * VISIBILITY & UNLOCK LOGIC
+ ************************************************/
+const isPhaseUnlocked = (p) => {
+  if (p.phaseNum === 1) return true;
+  const unlockerId = PHASE_UNLOCKERS[p.phaseNum];
+  return unlockerId && state.isWatched(unlockerId);
 };
 
-const getVisibleBounds = () => {
+const isUnlocked = (p) => {
+  if (p.phaseNum === 1) return true;
+  if (!isPhaseUnlocked(p)) return false;
+  return (p.prerequisites || []).every(id => state.isWatched(id));
+};
+
+const isVisible = (p) => {
+  if (p.id === CONFIG.START_NODE_ID) return true;
+  if (state.isWatched(p.id)) return true;
+  return (p.prerequisites || []).every(id => state.isWatched(id));
+};
+
+const getHighestUnlockedPhase = () => {
+  const unlocked = projects.filter(isPhaseUnlocked);
+  return unlocked.length ? Math.max(...unlocked.map(p => p.phaseNum)) : 1;
+};
+
+/************************************************
+ * COORDINATE SYSTEM
+ ************************************************/
+const getBounds = () => {
   const visible = projects.filter(isVisible);
   if (!visible.length) return null;
-  const xs = visible.map(p => p.gridX), ys = visible.map(p => p.gridY);
-  return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+  
+  const xs = visible.map(p => p.gridX);
+  const ys = visible.map(p => p.gridY);
+  
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys)
+  };
 };
 
-const gridToPixel = (p, bounds) => ({
-  x: (p.gridX - bounds.minX) * H_SPACING,
-  y: (p.gridY - bounds.minY) * V_SPACING
+const toPixel = (gridX, gridY, bounds) => ({
+  x: (gridX - bounds.minX) * CONFIG.H_SPACING,
+  y: (gridY - bounds.minY) * CONFIG.V_SPACING
 });
 
-const resizeContainer = bounds => {
-  const container = document.getElementById("map-container");
-  if (!container || !bounds) return;
-  setStyles(container, {
-    width: (bounds.maxX - bounds.minX + 1) * H_SPACING + NODE_WIDTH + "px",
-    height: (bounds.maxY - bounds.minY + 1) * V_SPACING + NODE_HEIGHT + "px"
-  });
-};
-
 /************************************************
- * SVG ARROWS
+ * RENDERER
  ************************************************/
-const svg = document.getElementById("connections");
-const arrows = [];
+class MapRenderer {
+  constructor() {
+    this.container = $("#map-wrapper");
+    this.mapContainer = $("#map-container");
+    this.nodesContainer = $("#nodes");
+    this.svg = $("#connections");
+    this.nodeElements = new Map();
+    this.arrowElements = [];
+    this.pendingCenterTarget = null;
+  }
 
-const createArrowhead = () => {
-  if (svg.querySelector("#arrowhead")) return;
-  const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
-  marker.id = "arrowhead";
-  marker.setAttribute("markerWidth", "10");
-  marker.setAttribute("markerHeight", "7");
-  marker.setAttribute("refX", "10");
-  marker.setAttribute("refY", "3.5");
-  marker.setAttribute("orient", "auto");
+  init() {
+    this.setupEventDelegation();
+    state.subscribe(() => this.render());
+  }
 
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", "M0,0 L0,7 L10,3.5 Z");
-  path.setAttribute("fill", "#222e22");
-  marker.appendChild(path);
+  setupEventDelegation() {
+    this.nodesContainer.addEventListener("click", (e) => {
+      const node = e.target.closest(".node");
+      if (!node) return;
+      
+      const id = node.dataset.id;
+      const project = state.byId.get(id);
+      if (!project || !isUnlocked(project)) return;
+      
+      this.showPopup(project);
+    });
+  }
 
-  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-  defs.appendChild(marker);
-  svg.appendChild(defs);
-};
+  render() {
+    const bounds = getBounds();
+    if (!bounds) return;
 
-const drawArrow = (fromNode, toNode) => {
-  const containerRect = svg.parentElement.getBoundingClientRect();
-  const a = fromNode.getBoundingClientRect();
-  const b = toNode.getBoundingClientRect();
+    this.updateContainerSize(bounds);
+    this.renderNodes(bounds);
+    this.updatePhaseIndicator();
+    
+    requestAnimationFrame(() => {
+      this.renderArrows();
+      this.centerOnTarget();
+    });
+  }
 
-  const fx = a.left + a.width / 2 - containerRect.left;
-  const fy = a.top + a.height / 2 - containerRect.top;
-  const tx = b.left + b.width / 2 - containerRect.left;
-  const ty = b.top + b.height / 2 - containerRect.top;
+  updateContainerSize(bounds) {
+    const width = (bounds.maxX - bounds.minX + 1) * CONFIG.H_SPACING + CONFIG.NODE_WIDTH;
+    const height = (bounds.maxY - bounds.minY + 1) * CONFIG.V_SPACING + CONFIG.NODE_HEIGHT;
+    
+    this.mapContainer.style.width = `${width}px`;
+    this.mapContainer.style.height = `${height}px`;
+  }
 
-  const dx = tx - fx, dy = ty - fy;
-  const len = Math.hypot(dx, dy);
-  const ux = dx / len, uy = dy / len;
+  renderNodes(bounds) {
+    const visible = projects.filter(isVisible);
+    const fragment = document.createDocumentFragment();
+    
+    const existingIds = new Set(this.nodeElements.keys());
+    const newIds = new Set(visible.map(p => p.id));
+    
+    existingIds.forEach(id => {
+      if (!newIds.has(id)) {
+        this.nodeElements.get(id)?.remove();
+        this.nodeElements.delete(id);
+      }
+    });
 
-  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  line.setAttribute("x1", fx + ux * (a.width / 2));
-  line.setAttribute("y1", fy + uy * (a.height / 2));
-  line.setAttribute("x2", tx - ux * (b.width / 2));
-  line.setAttribute("y2", ty - uy * (b.height / 2));
-  line.setAttribute("stroke", "#222e22");
-  line.setAttribute("stroke-width", 4);
-  line.setAttribute("marker-end", "url(#arrowhead)");
+    visible.forEach(p => {
+      let node = this.nodeElements.get(p.id);
+      const pos = toPixel(p.gridX, p.gridY, bounds);
+      
+      if (!node) {
+        node = this.createNodeElement(p, pos);
+        fragment.appendChild(node);
+        this.nodeElements.set(p.id, node);
+      } else {
+        node.style.left = `${pos.x}px`;
+        node.style.top = `${pos.y}px`;
+        this.updateNodeState(node, p);
+      }
+    });
 
-  svg.appendChild(line);
-  return line;
-};
+    if (fragment.childNodes.length) {
+      this.nodesContainer.appendChild(fragment);
+    }
+  }
 
-/************************************************
- * POPUP
- ************************************************/
-const showChoicePopup = p => {
-  // Remove any existing popup first
-  document.querySelector(".node-popup")?.remove();
-
-  const popup = document.createElement("div");
-  popup.className = "node-popup"; // Add a class to identify it
-  Object.assign(popup.style, {
-    position: "fixed",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    background: "#1e293b",
-    borderRadius: "12px",
-    boxShadow: "0 0 20px rgba(0,0,0,0.6)",
-    zIndex: 1000,
-    width: "90vw",
-    maxWidth: "1000px",
-    padding: "32px",
-    boxSizing: "border-box"
-  });
-
-  const closeBtn = document.createElement("button");
-  closeBtn.innerHTML = "✕";
-  Object.assign(closeBtn.style, {
-    position: "absolute",
-    top: "12px",
-    right: "16px",
-    background: "transparent",
-    border: "none",
-    color: "#fff",
-    fontSize: "28px",
-    cursor: "pointer"
-  });
-  closeBtn.onclick = () => popup.remove();
-
-  const text = document.createElement("p");
-  text.textContent = `Choose an action for "${p.title}"`;
-  Object.assign(text.style, {
-    color: "#fff",
-    fontSize: "32px",
-    marginBottom: "20px",
-    textAlign: "center"
-  });
-
-  const btn = document.createElement("button");
-  btn.textContent = p.watched ? "Mark as unwatched" : "Mark as watched";
-  Object.assign(btn.style, {
-    width: "100%",
-    padding: "14px",
-    fontSize: "32px",
-    borderRadius: "8px",
-    cursor: "pointer"
-  });
-  btn.onclick = () => {
-    p.watched = !p.watched; // toggle watched
-    saveProgress();
-    popup.remove();
-    renderAll();
-  };
-
-  popup.append(closeBtn, text, btn);
-  document.body.appendChild(popup);
-};
-
-/************************************************
- * RENDERING
- ************************************************/
-const renderNodes = bounds => {
-  const nodesContainer = document.getElementById("nodes");
-  nodesContainer.innerHTML = "";
-  svg.querySelectorAll("line").forEach(l => l.remove());
-  arrows.length = 0;
-
-  const visibleProjects = projects.filter(isVisible);
-  const nodeMap = {};
-
-  visibleProjects.forEach(p => {
+  createNodeElement(project, pos) {
     const node = document.createElement("div");
     node.className = "node";
-    node.dataset.id = p.id;
-    if (p.watched) node.classList.add("watched");
-    else if (!isUnlocked(p)) node.classList.add("locked");
-
-    const pos = gridToPixel(p, bounds);
-    setStyles(node, { left: pos.x + "px", top: pos.y + "px" });
-
-    if (p.image) {
+    node.dataset.id = project.id;
+    node.style.left = `${pos.x}px`;
+    node.style.top = `${pos.y}px`;
+    
+    if (project.image) {
       const img = document.createElement("img");
-      img.src = IMAGE_BASE + p.image;
+      img.src = CONFIG.IMAGE_BASE + project.image;
+      img.loading = "lazy";
       img.onerror = () => img.remove();
       node.appendChild(img);
     }
-
+    
     const check = document.createElement("span");
     check.className = "checkmark";
     check.textContent = "✔";
-    setStyles(check, { display: p.watched ? "block" : "none" });
     node.appendChild(check);
+    
+    this.updateNodeState(node, project);
+    return node;
+  }
 
-    if (isUnlocked(p)) node.onclick = () => showChoicePopup(p);
+  updateNodeState(node, project) {
+    const isWatched = state.isWatched(project.id);
+    const locked = !isUnlocked(project);
+    
+    node.classList.toggle("watched", isWatched);
+    node.classList.toggle("locked", locked);
+  }
 
-    nodesContainer.appendChild(node);
-    nodeMap[p.id] = node;
-  });
+  renderArrows() {
+    this.arrowElements.forEach(el => el.remove());
+    this.arrowElements = [];
+    
+    if (!this.svg.querySelector("#arrowhead")) {
+      this.createArrowhead();
+    }
 
-  visibleProjects.forEach(parent => {
-    parent.unlocks.forEach(childId => {
-      if (nodeMap[parent.id] && nodeMap[childId]) arrows.push(drawArrow(nodeMap[parent.id], nodeMap[childId]));
+    const containerRect = this.mapContainer.getBoundingClientRect();
+    
+    projects.forEach(parent => {
+      if (!isVisible(parent)) return;
+      
+      const fromNode = this.nodeElements.get(parent.id);
+      if (!fromNode) return;
+      
+      parent.unlocks.forEach(childId => {
+        const child = state.byId.get(childId);
+        if (!child || !isVisible(child)) return;
+        
+        const toNode = this.nodeElements.get(childId);
+        if (toNode) {
+          const arrow = this.createArrow(fromNode, toNode, containerRect);
+          this.svg.appendChild(arrow);
+          this.arrowElements.push(arrow);
+        }
+      });
     });
-  });
-};
+  }
+
+  createArrowhead() {
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+    
+    marker.id = "arrowhead";
+    marker.setAttribute("markerWidth", "8");
+    marker.setAttribute("markerHeight", "6");
+    marker.setAttribute("refX", "7");
+    marker.setAttribute("refY", "3");
+    marker.setAttribute("orient", "auto");
+    
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M0,0 L0,6 L7,3 Z");
+    path.setAttribute("fill", "rgba(46, 255, 81, 0.6)");
+    
+    marker.appendChild(path);
+    defs.appendChild(marker);
+    this.svg.appendChild(defs);
+  }
+
+  createArrow(fromNode, toNode, containerRect) {
+    const a = fromNode.getBoundingClientRect();
+    const b = toNode.getBoundingClientRect();
+    
+    const fx = a.left + a.width / 2 - containerRect.left;
+    const fy = a.top + a.height / 2 - containerRect.top;
+    const tx = b.left + b.width / 2 - containerRect.left;
+    const ty = b.top + b.height / 2 - containerRect.top;
+    
+    const dx = tx - fx;
+    const dy = ty - fy;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    
+    const offsetX = ux * (a.width / 2 + 6);
+    const offsetY = uy * (a.height / 2 + 6);
+    const endOffsetX = ux * (b.width / 2 + 8);
+    const endOffsetY = uy * (b.height / 2 + 8);
+    
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", fx + offsetX);
+    line.setAttribute("y1", fy + offsetY);
+    line.setAttribute("x2", tx - endOffsetX);
+    line.setAttribute("y2", ty - endOffsetY);
+    line.setAttribute("stroke", "rgba(46, 255, 81, 0.35)");
+    line.setAttribute("stroke-width", "2");
+    
+    return line;
+  }
+
+  updatePhaseIndicator() {
+    this.mapContainer.dataset.phase = getHighestUnlockedPhase();
+  }
+
+  setCenterTarget(id) {
+    this.pendingCenterTarget = id;
+  }
+
+  centerOnTarget() {
+    const targetId = this.pendingCenterTarget || state.getLastWatchedId();
+    this.pendingCenterTarget = null;
+    
+    const node = this.nodeElements.get(targetId);
+    if (!node) return;
+    
+    const wrapperRect = this.container.getBoundingClientRect();
+    const nodeRect = node.getBoundingClientRect();
+    
+    const scrollLeft = this.container.scrollLeft + (nodeRect.left - wrapperRect.left) - (wrapperRect.width / 2) + (nodeRect.width / 2);
+    const scrollTop = this.container.scrollTop + (nodeRect.top - wrapperRect.top) - (wrapperRect.height / 2) + (nodeRect.height / 2);
+    
+    this.container.scrollTo({
+      left: Math.max(0, scrollLeft),
+      top: Math.max(0, scrollTop),
+      behavior: "smooth"
+    });
+  }
+
+  showPopup(project) {
+    $(".node-popup")?.remove();
+    
+    const isWatched = state.isWatched(project.id);
+    const popup = document.createElement("div");
+    popup.className = "node-popup";
+    popup.innerHTML = `
+      <button class="popup-close">✕</button>
+      <h3>${project.title}</h3>
+      <button class="popup-action ${isWatched ? 'unwatch' : ''}">
+        ${isWatched ? "Mark as unwatched" : "Mark as watched"}
+      </button>
+    `;
+    
+    popup.querySelector(".popup-close").onclick = () => popup.remove();
+    
+    popup.querySelector(".popup-action").onclick = () => {
+      state.toggle(project.id);
+      this.setCenterTarget(project.id);
+      popup.remove();
+    };
+    
+    popup.addEventListener("click", (e) => {
+      if (e.target === popup) popup.remove();
+    });
+    
+    document.body.appendChild(popup);
+  }
+
+  markAllWatched() {
+    projects.forEach(p => state.setWatched(p.id, true));
+  }
+}
 
 /************************************************
- * MAIN
+ * INITIALIZATION
  ************************************************/
-const renderAll = () => {
-  const bounds = getVisibleBounds();
-  if (!bounds) return;
-
-  resizeContainer(bounds);
-  createArrowhead();
-  renderNodes(bounds);
-
-  const container = document.getElementById("map-container");
-  container.dataset.phase = getHighestUnlockedPhase();
-
-  const lastWatched = projects.filter(p => p.watched).pop();
-  const targetId = lastWatched ? lastWatched.id : START_NODE_ID;
-  const node = document.querySelector(`.node[data-id='${targetId}']`);
-  node?.scrollIntoView({ behavior: "smooth", block: "center" });
-};
+const renderer = new MapRenderer();
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("markAllWatchedBtn")?.addEventListener("click", () => {
-    projects.forEach(p => p.watched = true);
-    saveProgress();
-    renderAll();
+  state.initProjects(projects);
+  renderer.init();
+  
+  $("#markAllWatchedBtn")?.addEventListener("click", () => renderer.markAllWatched());
+  $("#clear-progress")?.addEventListener("click", () => {
+    state.clear();
+    renderer.setCenterTarget(CONFIG.START_NODE_ID);
   });
-  document.getElementById("clear-progress")?.addEventListener("click", clearProgress);
-  renderAll();
+  
+  renderer.setCenterTarget(state.getLastWatchedId());
+  renderer.render();
 });
-
-window.addEventListener("resize", renderAll);
